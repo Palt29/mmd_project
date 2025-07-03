@@ -10,3 +10,14 @@ dependencies = [
     "pytest>=8.4.1",
     "ruff>=0.12.1",
 ]
+
+[tool.ruff]
+line-length = 88
+fix = true
+unsafe-fixes = true
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+ignore_missing_imports = true
+
