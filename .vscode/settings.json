@@ -1,0 +1,27 @@
+{
+    //
+    // Python settings
+    //
+    "[python]": {
+        "editor.formatOnSave": true,
+        "editor.formatOnType": true,
+        "editor.codeActionsOnSave": {
+            "source.fixAll": "explicit",
+            "source.organizeImports": "explicit"
+        },
+        "editor.defaultFormatter": "charliermarsh.ruff"
+    },
+    //
+    // Jupyter Notebook settings
+    //
+    "notebook.formatOnSave.enabled": true,
+    "notebook.codeActionsOnSave": {
+        "notebook.source.fixAll": "explicit",
+        "notebook.source.organizeImports": "explicit"
+    },
+    //
+    // Editor settings
+    //
+    "rewrap.wrappingColumn": 88,
+    "rewrap.wholeComment": false
+}
