@@ -28,6 +28,7 @@ def load_data(filename: str) -> tuple[list[list[float]], int, int]:
     items = {}
     num_items = 0
     raw_lines = open(filename, "r").read().splitlines()
+    # Remove the first line
     del raw_lines[0]
     for line in raw_lines:
         line_content = line.split(",")
@@ -62,12 +63,157 @@ def create_utility_matrix(
     Returns:
         A 2D NumPy array representing the utility matrix.
     """
+    # Create an NxI matrix of zeros,
+    # where N = number of users
+    # and I = number of items
     ratings = np.zeros((num_users, num_items))
 
+    # Fill the matrix with the ratings
+    # NOTE: input_ratings: list[list]
     for row in input_ratings:
         ratings[int(row[0]), int(row[1])] = row[2]
 
+    # Compute the "sparsity", i.e., percentage of non-zero cells
     sparsity = 100 * float(np.count_nonzero(ratings)) / float(num_users * num_items)
     logging.info("Sparsity: %.2f%%", sparsity)
 
     return ratings
+
+
+def count_and_avg_rating_per_user(utility_matrix: np.ndarray) -> np.ndarray:
+    """Computes the number of rated items and average rating per user.
+
+    Args:
+        utility_matrix: A 2D NumPy array of shape (num_users, num_items),
+            where each cell [i, j] contains the rating from user i for item j,
+            or 0 if no rating was given.
+
+    Returns:
+        A NumPy array of shape (num_users, 2), where:
+            - [:, 0] contains the count of rated items per user.
+            - [:, 1] contains the average rating per user (0 if no ratings).
+    """
+    counts = np.count_nonzero(utility_matrix, axis=1)
+    sums = utility_matrix.sum(axis=1)
+    averages = np.zeros_like(sums, dtype=float)
+    mask = counts > 0
+    averages[mask] = sums[mask] / counts[mask]
+    return np.vstack((counts, averages)).T
+
+
+def top_users_by_count(user_info: np.ndarray, top_k: int) -> np.ndarray:
+    """Returns the top-k users by number of rated items, including their indices.
+
+    Args:
+        user_info: NumPy array of shape (num_users, 2), where:
+            - [:, 0] contains the count of rated items per user.
+            - [:, 1] contains the average rating per user.
+        top_k: Number of top users to return.
+
+    Returns:
+        A NumPy array of shape (top_k, 3), where each row contains:
+            [user_index, count, average_rating].
+    """
+    indices = np.argsort(user_info[:, 0])[::-1][:top_k]
+    return np.column_stack((indices, user_info[indices]))
+
+
+def count_and_avg_ratings_per_item(utility_matrix: np.ndarray) -> np.ndarray:
+    """Computes the number of ratings and average rating per item.
+
+    Args:
+        utility_matrix: A 2D NumPy array of shape (num_users, num_items),
+            where each cell [i, j] contains the rating from user i for item j,
+            or 0 if no rating was given.
+
+    Returns:
+        A NumPy array of shape (num_items, 2), where:
+            - [:, 0] contains the count of ratings per item.
+            - [:, 1] contains the average rating per item (0 if unrated).
+    """
+    counts = np.count_nonzero(utility_matrix, axis=0)
+    sums = utility_matrix.sum(axis=0)
+    averages = np.zeros_like(sums, dtype=float)
+    mask = counts > 0
+    averages[mask] = sums[mask] / counts[mask]
+    return np.vstack((counts, averages)).T
+
+
+def top_items_by_avg_and_count(
+    item_info: np.ndarray, min_count: int, top_k: int
+) -> np.ndarray:
+    """Returns the top-k items with the highest average rating among those with sufficient ratings.
+
+    Args:
+        item_info: NumPy array of shape (num_items, 2), where:
+            - [:, 0] contains the count of ratings per item.
+            - [:, 1] contains the average rating per item.
+        min_count: Minimum number of ratings required to include an item.
+        top_k: Number of top items to return (default is 10).
+
+    Returns:
+        A NumPy array of shape (top_k, 3), where each row contains:
+            [item_index, num_ratings, avg_rating].
+    """
+    mask = item_info[:, 0] >= min_count
+    filtered = item_info[mask]
+    indices = np.where(mask)[0]
+
+    sorted_idx = np.argsort(filtered[:, 1])[::-1][:top_k]
+    return np.column_stack((indices[sorted_idx], filtered[sorted_idx]))
+
+
+def normalize_utility_matrix(utility_matrix: np.ndarray) -> np.ndarray:
+    """Normalizes the utility matrix by subtracting each user's average rating.
+
+    Each nonzero entry is replaced with (rating - user_avg). Unrated entries remain 0.
+
+    Args:
+        utility_matrix: A 2D NumPy array of shape (num_users, num_items),
+            where each cell [i, j] contains the rating from user i for item j,
+            or 0 if no rating was given.
+
+    Returns:
+        A normalized utility matrix of the same shape as the input,
+        with zero-mean rows (for nonzero entries).
+    """
+    user_info = count_and_avg_rating_per_user(utility_matrix)
+    avg_ratings = user_info[:, 1][:, None]
+    return np.where(utility_matrix != 0, utility_matrix - avg_ratings, 0)
+
+
+def train_test_split_v2(
+    ratings: np.ndarray, sample_per_user: int = 10, seed: int = 123425536
+) -> tuple[np.ndarray, np.ndarray]:
+    """Splits the utility matrix into train and test sets for evaluation.
+
+    For each user, a percentage of their ratings is randomly selected and moved to the test set.
+    The resulting train and test matrices are disjoint.
+
+    Args:
+        ratings: A 2D NumPy array of shape (num_users, num_items),
+            containing the full utility matrix with ratings.
+        sample_per_user: Percentage of each user's ratings to sample for the test set.
+        seed: Random seed for reproducibility.
+
+    Returns:
+        A tuple of two NumPy arrays (train, test), each of shape (num_users, num_items).
+    """
+    test = np.zeros(ratings.shape)
+    train = ratings.copy()
+    np.random.seed(seed)
+    for user in range(ratings.shape[0]):
+        num_ratings = len(ratings[user, :].nonzero()[0])
+        if num_ratings == 0:
+            continue
+        actual_sample = int(num_ratings * sample_per_user / 100)
+        test_ratings = np.random.choice(
+            ratings[user, :].nonzero()[0],
+            size=actual_sample,
+            replace=False,
+        )
+        train[user, test_ratings] = 0.0
+        test[user, test_ratings] = ratings[user, test_ratings]
+
+    assert np.all((train * test) == 0)
+    return train, test
