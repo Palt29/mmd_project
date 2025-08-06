@@ -17,6 +17,7 @@ def load_data(filename: str) -> tuple[list[list[float]], int, int]:
             rows in the format: user_id, item_id, rating (with a header row).
 
     Returns:
+        out:
         A tuple containing:
             - A list of [user_idx, item_idx, rating] entries.
             - Total number of unique users.
@@ -89,6 +90,7 @@ def count_and_avg_rating_per_user(utility_matrix: np.ndarray) -> np.ndarray:
             or 0 if no rating was given.
 
     Returns:
+        out:
         A NumPy array of shape (num_users, 2), where:
             - [:, 0] contains the count of rated items per user.
             - [:, 1] contains the average rating per user (0 if no ratings).
@@ -111,6 +113,7 @@ def top_users_by_count(user_info: np.ndarray, top_k: int) -> np.ndarray:
         top_k: Number of top users to return.
 
     Returns:
+        out:
         A NumPy array of shape (top_k, 3), where each row contains:
             [user_index, count, average_rating].
     """
@@ -127,6 +130,7 @@ def count_and_avg_ratings_per_item(utility_matrix: np.ndarray) -> np.ndarray:
             or 0 if no rating was given.
 
     Returns:
+        out:
         A NumPy array of shape (num_items, 2), where:
             - [:, 0] contains the count of ratings per item.
             - [:, 1] contains the average rating per item (0 if unrated).
@@ -152,6 +156,7 @@ def top_items_by_avg_and_count(
         top_k: Number of top items to return (default is 10).
 
     Returns:
+        out:
         A NumPy array of shape (top_k, 3), where each row contains:
             [item_index, num_ratings, avg_rating].
     """
@@ -217,3 +222,69 @@ def train_test_split_v2(
 
     assert np.all((train * test) == 0)
     return train, test
+
+
+# Cosine similarity (alternatively, Pearson correlation) is used in memory-based collaborative filtering
+# (e.g., user-user or item-item CF).
+# It is not applicable for rGLSVD and sGLSVD, which require clustering methods to assign users into fixed subsets.
+def compute_similarity(
+    ratings: np.ndarray,
+    kind: str = "user",
+    epsilon: float = 1e-9,
+) -> np.ndarray:
+    """Returns a cosine-similarity matrix for users or items.
+
+    Args:
+        ratings: Utility matrix of shape (num_users, num_items), where each
+            non-zero entry denotes user-item interaction strength.
+        kind: Either `"user"` for a user-user similarity matrix or `"item"` for
+            an item-item similarity matrix.
+        epsilon: Small constant added to the dot-product matrix to prevent
+            division-by-zero when normalizing.
+
+    Returns:
+        out:
+        A square NumPy array:
+            * (num_users, num_users) if `kind == "user"`,
+            * (num_items, num_items) if `kind == "item"`,
+        where each entry ∈ [0, 1] is the cosine similarity between the
+        corresponding user or item vectors.
+    """
+    # We compute the dot product between ratings
+    # epsilon -> small number for handling divide-by-zero errors
+    if kind == "user":
+        sim = ratings.dot(ratings.T) + epsilon
+    elif kind == "item":
+        sim = ratings.T.dot(ratings) + epsilon
+    else:
+        raise ValueError("kind must be 'user' or 'item'.")
+
+    # From the diagonal of the dot product matrix we extract the norms
+    # (diagonal contains squared magnitudes: v·v = ||v||²)
+    norms = np.array([np.sqrt(np.diagonal(sim))])
+
+    # The double division allows broadcasting
+    result: np.ndarray = sim / norms / norms.T
+    return result
+
+
+# The below function is crucial for rGLSVD and sGLSVD implementations
+# because they do not use explicit ratings,
+# but only binary indicators of interaction (implicit feedback)
+def binarize_ratings(utility_matrix: np.ndarray) -> np.ndarray:
+    """
+    Converts a user-item rating matrix into a binary implicit feedback matrix.
+
+    All positive ratings are set to 1.0 (indicating user interaction),
+    and all zero or missing ratings are set to 0.0.
+
+    Args:
+        utility_matrix: A 2D NumPy array of shape (num_users, num_items),
+            where each cell [i, j] contains the rating from user i for item j,
+            or 0 if no rating was given
+
+    Returns:
+        A binary matrix of the same shape as input, where
+        entries are 1.0 if rating > 0, and 0.0 otherwise.
+    """
+    return (utility_matrix > 0).astype(float)
