@@ -3,6 +3,8 @@
 import logging
 
 import numpy as np
+from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
 
 # Logger setup
 logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
@@ -288,3 +290,42 @@ def binarize_ratings(utility_matrix: np.ndarray) -> np.ndarray:
         entries are 1.0 if rating > 0, and 0.0 otherwise.
     """
     return (utility_matrix > 0).astype(float)
+
+
+def cluster_users_kmeans(
+    utility_matrix: np.ndarray,
+    k_values: list[int],
+    random_state: int = 42,
+) -> np.ndarray:
+    """Clusters users using KMeans over a grid of possible k values.
+
+    For each k in `k_values`, KMeans is applied to the user vectors (rows of the utility matrix).
+    The best clustering is selected using the silhouette score.
+
+    Args:
+        utility_matrix: A 2D NumPy array of shape (num_users, num_items),
+            where each row corresponds to a user's interaction vector.
+        k_values: A list of integers specifying the candidate numbers of clusters.
+        random_state: Random seed for reproducibility.
+
+    Returns:
+        A 1D NumPy array of shape (num_users,) containing the cluster assignment
+        for each user (cluster IDs range from 0 to k-1).
+    """
+    best_score: float = -1.0
+    best_labels: np.ndarray | None = None
+
+    for k in k_values:
+        model = KMeans(n_clusters=k, random_state=random_state, n_init="auto")
+        labels = model.fit_predict(utility_matrix)
+        if len(np.unique(labels)) == 1:
+            continue  # skip degenerate clustering
+        score = silhouette_score(utility_matrix, labels)
+        if score > best_score:
+            best_score = score
+            best_labels = labels
+
+    if best_labels is None:
+        raise ValueError("Clustering failed for all k values.")
+
+    return best_labels
