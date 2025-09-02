@@ -8,6 +8,7 @@ dependencies = [
     "logging>=0.4.9.6",
     "matplotlib>=3.10.5",
     "mypy>=1.16.1",
+    "nbstripout>=0.8.1",
     "numpy>=2.3.2",
     "pre-commit>=4.2.0",
     "pytest>=8.4.1",
