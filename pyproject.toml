@@ -5,6 +5,7 @@ description = "Mining Massive Datasets project, University of Verona (A.Y. 2024/
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "kmodes>=0.12.2",
     "logging>=0.4.9.6",
     "matplotlib>=3.10.5",
     "mypy>=1.16.1",

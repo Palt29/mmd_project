@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.12"
 
 [[package]]
@@ -276,6 +276,21 @@ wheels = [
 ]
 
 [[package]]
+name = "kmodes"
+version = "0.12.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "joblib" },
+    { name = "numpy" },
+    { name = "scikit-learn" },
+    { name = "scipy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/5c/16/e2b5222bb5efabc56259215bbc9e94df9ee08a43b5a9ed33aae28ce2dade/kmodes-0.12.2.tar.gz", hash = "sha256:d840ac9f4616a668ebacba24a12ec1def87da24a9fd0a0dc2f7499a9b9a6f45b", size = 18883, upload-time = "2022-09-06T19:36:37.14Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1a/a8/0d3bf6f3340cbcb8cf4ad02c306d157af8f09ce86aadf5346e00605870dd/kmodes-0.12.2-py2.py3-none-any.whl", hash = "sha256:b764f7166dd5fe63826135ed74df796693dc7c25fc2cb8a106e14f3bfb371004", size = 20408, upload-time = "2022-09-06T19:36:34.956Z" },
+]
+
+[[package]]
 name = "logging"
 version = "0.4.9.6"
 source = { registry = "https://pypi.org/simple" }
@@ -340,6 +355,7 @@ name = "mmd-project"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "kmodes" },
     { name = "logging" },
     { name = "matplotlib" },
     { name = "mypy" },
@@ -353,6 +369,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "kmodes", specifier = ">=0.12.2" },
     { name = "logging", specifier = ">=0.4.9.6" },
     { name = "matplotlib", specifier = ">=3.10.5" },
     { name = "mypy", specifier = ">=1.16.1" },
