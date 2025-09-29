@@ -52,7 +52,9 @@ def rGLSVD(
         # user_global = P, shape = num_user x f_g
         # sigma_global = singular values matrix, shape f_g x f_g
         # item_global = Q, shape = num_items x f_g
-        user_global, sigma_global, item_global = svds(R_global, k=f_g)
+        R_global_sparse = sp.csr_matrix(R_global)
+
+        user_global, sigma_global, item_global = svds(R_global_sparse, k=f_g)
 
         # Local decompositions (None as placeholder, later filled with arrays)
         user_local: list[np.ndarray | None] = [None] * num_clust
