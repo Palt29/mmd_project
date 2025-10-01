@@ -38,6 +38,7 @@ def rGLSVD(
     gu_vector = np.full(num_users, 0.5)  # initial weights vector
     num_changed_users = num_users
     eps = 1e-12  # guard against division by zero
+    cluster_global_indices: list[np.ndarray | None] = [None] * num_clust
 
     # we assign num_change_users = num_users
     # just to start the while loop
@@ -63,6 +64,7 @@ def rGLSVD(
 
         for i in range(num_clust):
             user_indices_in_cluster = np.where(clusters == i)[0]
+            cluster_global_indices[i] = user_indices_in_cluster
             local_gu_vector = 1.0 - gu_vector[user_indices_in_cluster]
             bin_cluster_utility_matrix = bin_utiliy_matrix[user_indices_in_cluster, :]
             R_local[i] = local_gu_vector[:, np.newaxis] * bin_cluster_utility_matrix
@@ -130,5 +132,6 @@ def rGLSVD(
         item_global,       # Q
         user_local,   # P^c
         sigma_local_matrices, #fc matrices
-        item_local  #Q^c 
+        item_local,  #Q^c
+        cluster_global_indices 
         )
