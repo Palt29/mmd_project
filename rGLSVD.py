@@ -58,7 +58,7 @@ def rGLSVD(
 
         # Local decompositions (None as placeholder, later filled with arrays)
         user_local: list[np.ndarray | None] = [None] * num_clust
-        sigma_local: list[np.ndarray | None] = [None] * num_clust
+        sigma_local_matrices: list[np.ndarray | None] = [None] * num_clust
         item_local: list[np.ndarray | None] = [None] * num_clust
 
         for i in range(num_clust):
@@ -76,11 +76,10 @@ def rGLSVD(
 
             user_local[i] = U_loc
             item_local[i] = Vt_loc
-            sigma_local[i] = np.diag(sigma_loc_diag)
+            sigma_local_matrices[i] = np.diag(sigma_loc_diag)
 
         # Eq. (3) from the paper (Section 4.3)
         gu_new = np.zeros(num_users)  # new gu vector
-        Q_global = item_global.T  # f_g x num_items
         sigma_global_matrix = np.diag(sigma_global)
 
         # gu_vector shape = num_users x 1
@@ -90,14 +89,14 @@ def rGLSVD(
             # Global predictions
             p_user_global = user_global[u, :]  # p_user_global = p_u, shape = 1 x f_g
             predictions_global = (
-                (p_user_global.T).dot(sigma_global_matrix).dot(Q_global)
+                (p_user_global.T).dot(sigma_global_matrix).dot(item_global)
             )  # (1 x f_g) @ (f_g x f_g) @ (f_g x num_items) = 1 x num_items
 
             # Local predictions
             cluster_id = int(clusters[u])
             U_loc = user_local[cluster_id]
             Vt_loc = item_local[cluster_id]
-            sigma_loc = sigma_local[cluster_id]
+            sigma_loc = sigma_local_matrices[cluster_id]
 
             user_indices_in_cluster = np.where(clusters == cluster_id)[0]
             # Assumes user u belongs to this cluster and is present
@@ -125,4 +124,11 @@ def rGLSVD(
 
         gu_vector = gu_new
 
-    return gu_vector
+    return (gu_vector, 
+        user_global,  # P
+        sigma_global_matrix, #fg matrix
+        item_global,       # Q
+        user_local,   # P^c
+        sigma_local_matrices, #fc matrices
+        item_local  #Q^c 
+        )
