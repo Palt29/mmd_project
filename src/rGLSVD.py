@@ -7,15 +7,15 @@ def rGLSVD(
     clusters: np.ndarray,
     bin_utiliy_matrix: np.ndarray,
     num_clust: int = 7,
-    f_g: int = 10,
+    f_g: int = 18,
     f_c: dict[int, int] = {
         0: 7,
-        1: 10,
-        2: 15,
-        3: 12,
-        4: 22,
-        5: 15,
-        6: 20,
+        1: 5,
+        2: 10,
+        3: 8,
+        4: 6,
+        5: 7,
+        6: 6,
     },  # test numbers
 ) -> np.ndarray:
     """Applies the rGLSVD algorithm to compute user global weights.
