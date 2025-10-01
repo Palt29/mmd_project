@@ -40,7 +40,7 @@ def evaluate_metrics_loocv(
     test_items: dict[int, int],
     train_matrix: np.ndarray,
     clusters: np.ndarray,
-    N_recommend: int = 10
+    N_recommend: int,
 ) -> tuple[float, float]:
     """
     Calcola Hit-Rate (HR) e ARHR utilizzando i fattori latenti addestrati 
@@ -70,7 +70,6 @@ def evaluate_metrics_loocv(
     for u in users_to_evaluate:
         test_item = test_items[u]
         cluster_id = int(clusters[u])
-        
         # 1. Calcola i punteggi di predizione per tutti gli item (1 x m)
         all_item_scores = predict_scores(
             u, cluster_id, user_global, sigma_global_matrix, item_global,
