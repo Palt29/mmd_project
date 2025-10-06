@@ -41,12 +41,11 @@ def sGLSVD(
     user_local: List[Optional[np.ndarray]] = [None] * num_clust
     sigma_local_matrices: List[Optional[np.ndarray]] = [None] * num_clust
     sigma_local: List[Optional[np.ndarray]] = [None] * num_clust
-    item_local: List[Optional[np.ndarray]] = [None] * num_clust
+    item_local: List[Optional[np.ndarray]] = [None] * num_clust#ripetizione inutile
 
     while num_users_switching / num_users > 0.01:
         iteration += 1
-        
-        # ===== FASE 1: Stima Fattori =====
+
         # Global Factor
         R_global = gu_vector[:, np.newaxis] * bin_utiliy_matrix
         R_global_sparse = sp.csr_matrix(R_global)
@@ -61,9 +60,9 @@ def sGLSVD(
         
         for i in range(num_clust):
             user_indices_in_cluster = np.where(clusters == i)[0]
-            cluster_global_indices[i] = user_indices_in_cluster  # Salva il mapping
+            cluster_global_indices[i] = user_indices_in_cluster  # Global index
             
-            if len(user_indices_in_cluster) == 0:
+            if len(user_indices_in_cluster) == 0: #senso?
                 continue
                 
             local_gu_vector = 1.0 - gu_vector[user_indices_in_cluster]
@@ -76,7 +75,7 @@ def sGLSVD(
             sigma_local[i] = sigma_loc_diag
             sigma_local_matrices[i] = np.diag(sigma_loc_diag)
         
-        # ===== FASE 2: Reassignment con Isteresi =====
+        # Reassignment of clusters
         gu_new = gu_vector.copy()
         clusters_new = clusters.copy()
         users_switched_count = 0
@@ -91,7 +90,7 @@ def sGLSVD(
             # prendiamo il valore temporaneo per permettere al type checker di inferire None-check
             local_indices_opt = cluster_global_indices[current_cluster_id]
             if local_indices_opt is not None:
-                local_indices = local_indices_opt  # type: np.ndarray
+                local_indices = local_indices_opt  # non sono certo sia necessario questo controllo
                 # verifica membership
                 if u in local_indices:
                     # trova posizione locale dell'utente
@@ -224,7 +223,7 @@ def sGLSVD(
         sigma_local[i] = sigma_loc_diag
         sigma_local_matrices[i] = np.diag(sigma_loc_diag)
     
-    # ===== OUTPUT FINALE =====
+    #Output
     user_local_list: List[Optional[np.ndarray]] = []
     sigma_local_list: List[Optional[np.ndarray]] = []
     item_local_list: List[Optional[np.ndarray]] = []
