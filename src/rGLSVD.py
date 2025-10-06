@@ -32,7 +32,7 @@ def rGLSVD(
         f_g (int, optional): Rank for the global SVD.
         f_c (dict[int, int], optional): Dictionary mapping cluster index to rank for local SVD.
 
-        Returns:
+    Returns:
         tuple: A tuple containing:
             - np.ndarray: Final user global weight vector (`gu_vector`) with values in [0, 1].
             - np.ndarray: Global user latent matrix (`user_global`, P).
