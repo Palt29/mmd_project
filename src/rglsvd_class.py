@@ -167,8 +167,8 @@ class RGLSVDRecommender:
             iterations_count += 1
             # Global matrix initialization
             R_global = gu_vector[:, np.newaxis] * bin_utility_matrix
-            # Local matrices initialization (None as placeholder)
-            R_local: list[np.ndarray | None] = [None] * num_clusters
+            # Local matrices initialization (empty arrays as placeholders)
+            R_local: list[np.ndarray] = [np.empty((0, 0)) for _ in range(num_clusters)]
 
             # Global decomposition
             # On the right, notation according to the paper (P, Σ, Q),
@@ -244,10 +244,10 @@ class RGLSVDRecommender:
                 numerator = float(np.sum(diff_pred * (user_vector - b)))
                 denominator = float(np.sum(diff_pred**2))
 
-                # Assumption: if the computation is not possible,
-                # the user weight is considered global (= 1)
+                # If denominator is zero, keep the previous weight (no update possible);
+                # otherwise update g_u using Eq. (3), clipping the value to [0, 1].
                 if denominator == 0.0:
-                    gu_new[user_idx] = 1.0
+                    gu_new[user_idx] = gu_vector[user_idx]
                 else:
                     gu_new[user_idx] = float(np.clip(numerator / denominator, 0.0, 1.0))
 
