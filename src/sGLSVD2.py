@@ -35,7 +35,7 @@ def sGLSVD(
     prev_total_error = np.inf
     num_changed_users = num_users
 
-    cluster_global_indices: list[np.ndarray] = [np.empty((0,), dtype=int) for _ in range(num_clusters)]
+    cluster_global_indices: list[Optional[np.ndarray]] = [None] * num_clusters
 
     # Initialize lists for local factors
     user_local: list[Optional[np.ndarray]] = [None] * num_clusters
@@ -45,12 +45,12 @@ def sGLSVD(
     while num_changed_users / num_users > 0.01:
         iteration += 1
 
-        #GLOBAL FACTORS
-        R_global = sp.csr_matrix(gu_vector[:, np.newaxis] * bin_utility_matrix)
+        # GLOBAL FACTORS
+        R_global = sp.csr_matrix(gu_vector[:, np.newaxis] * bin_utility_matrix) #sparse format
         user_global, sigma_global, item_global = svds(R_global, k=f_g)
         sigma_global_matrix = np.diag(sigma_global)
 
-        #LOCAL FACTORS
+        # LOCAL FACTORS
         for cluster_idx in range(num_clusters):
             user_indices = np.where(clusters == cluster_idx)[0]
             cluster_global_indices[cluster_idx] = user_indices
@@ -59,7 +59,7 @@ def sGLSVD(
                 continue
 
             local_gu = 1.0 - gu_vector[user_indices]
-            R_local = sp.csr_matrix(local_gu[:, np.newaxis] * bin_utility_matrix[user_indices, :])
+            R_local = sp.csr_matrix(local_gu[:, np.newaxis] * bin_utility_matrix[user_indices, :]) #sparse format
             U_loc, sigma_loc_diag, Vt_loc = svds(R_local, k=f_c)
 
             user_local[cluster_idx] = U_loc
@@ -95,6 +95,7 @@ def sGLSVD(
                         p_u_global = user_global[u, :]
                         p_u_local = U_loc[local_u, :]
 
+                        # Equation 3
                         pred_global = p_u_global.dot(sigma_global_matrix).dot(item_global)
                         pred_local = p_u_local.dot(Sigma_loc).dot(Vt_loc)
 
@@ -103,6 +104,8 @@ def sGLSVD(
                         den = float(np.sum(diff_pred**2))
 
                         g_u_opt = gu_vector[u] if den < eps else float(np.clip(num / den, 0.0, 1.0))
+
+                        # Equation 5
                         final_pred = g_u_opt * pred_global + (1.0 - g_u_opt) * pred_local
 
                         min_error = float(np.sum((r_u - final_pred) ** 2))
@@ -118,10 +121,12 @@ def sGLSVD(
                 sigma_diag = np.diag(Sigma_loc) if Sigma_loc is not None else None
                 if Vt_loc is None or sigma_diag is None:
                     continue
-
+                
+                # Equation 4
                 inv_sigma = np.diag(1.0 / np.where(sigma_diag > eps, sigma_diag, eps))
                 p_u_local_test = r_u.dot(Vt_loc.T.dot(inv_sigma))
 
+                # Equation 3
                 p_u_global = user_global[u, :]
                 pred_global = p_u_global.dot(sigma_global_matrix).dot(item_global)
                 pred_local = p_u_local_test.dot(Sigma_loc).dot(Vt_loc)
@@ -131,7 +136,9 @@ def sGLSVD(
                 den = float(np.sum(diff_pred**2))
                 g_u_test = 0.5 if den < eps else float(np.clip(num / den, 0.0, 1.0))
 
+                #Equation 5
                 error = float(np.sum((r_u - (g_u_test * pred_global + (1.0 - g_u_test) * pred_local)) ** 2))
+                
                 if error < min_error * (1.0 - min_error_improvement):
                     min_error = error
                     best_cluster = c_test
