@@ -11,7 +11,7 @@ def sGLSVD(
     num_clust: int,
     f_g: int,
     f_c: int,
-    min_error_improvement: float = 0.001  # Minimo miglioramento relativo richiesto
+    min_error_improvement: float = 0.01  # Minimo miglioramento relativo richiesto
 ) -> Tuple[
     Tuple[
         np.ndarray,               # gu_vector

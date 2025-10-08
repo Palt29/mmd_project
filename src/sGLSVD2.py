@@ -10,7 +10,7 @@ def sGLSVD(
     num_clusters: int,
     f_g: int,
     f_c: int,
-    min_error_improvement: float = 0.001,
+    min_error_improvement: float = 0.01,
 ) -> tuple[
     tuple[
         np.ndarray,  # gu_vector
