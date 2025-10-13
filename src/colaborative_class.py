@@ -3,25 +3,18 @@ from typing import Literal
 
 
 class CollaborativeFilteringRecommender:
-    """Collaborative Filtering Recommender User-User."""  # item-item rimosso
+    """Collaborative Filtering Recommender User-User and Item-Item."""
 
     def __init__(
         self,
         R_bin: np.ndarray,
+        mode: Literal["user-user", "item-item"] = "user-user",
         similarity: Literal["jaccard", "cosine"] = "jaccard",
         k_neighbors: int = 20,
         k_similarity: int | None = None,
     ) -> None:
-        """Inizializza il sistema di raccomandazione.
-
-        Args:
-            R_bin (np.ndarray): (num_users x num_items).
-            similarity (str): ("jaccard" o "cosine").
-            k_neighbors (int): Numero di vicini per la predizione.
-            k_similarity (int | None): Numero di vicini da mantenere nella matrice di similarità.
-                Se None, mantiene tutti i valori. Default: None.
-        """
         self.R_bin = R_bin
+        self.mode = mode
         self.similarity_metric = similarity
         self.k_neighbors = k_neighbors
         self.k_similarity = k_similarity
@@ -31,7 +24,6 @@ class CollaborativeFilteringRecommender:
         self.is_fitted: bool = False
 
     def _jaccard_similarity(self, matrix: np.ndarray) -> np.ndarray:
-        """Jaccard similarity matrix"""
         n = matrix.shape[0]
         similarity = np.zeros((n, n))
         
@@ -51,43 +43,34 @@ class CollaborativeFilteringRecommender:
         return similarity
 
     def _cosine_similarity(self, matrix: np.ndarray) -> np.ndarray:
-        """Cosine similarity matrix"""
-        # Normalize row
         norms = np.linalg.norm(matrix, axis=1, keepdims=True)
-        norms[norms == 0] = 1  # Avoid zero division
-        
+        norms[norms == 0] = 1
         normalized = matrix / norms
         similarity = normalized @ normalized.T
-        
         return similarity
 
     def _apply_top_k_similarity(self, similarity: np.ndarray, k: int) -> np.ndarray:
-
-        """Top-k valori of similarity for each row.
-        """
         sim_k = similarity.copy()
         
         for i in range(sim_k.shape[0]):
             top_k_indices = np.argsort(sim_k[i])[::-1][:k]
-            
             mask = np.zeros(sim_k.shape[1], dtype=bool)
             mask[top_k_indices] = True
-       
             sim_k[i, ~mask] = 0
 
         return sim_k
 
     def fit(self) -> np.ndarray:
-        """Similarity matrix"""
-        matrix = self.R_bin  # solo user-user
+        if self.mode == "user-user":
+            matrix = self.R_bin
+        else: 
+            matrix = self.R_bin.T
         
-        # Complete matrix
         if self.similarity_metric == "jaccard":
             self.similarity_matrix = self._jaccard_similarity(matrix)
         else:  
             self.similarity_matrix = self._cosine_similarity(matrix)
         
-        # top k matrix
         if self.k_similarity is not None:
             self.similarity_matrix = self._apply_top_k_similarity(
                 self.similarity_matrix, 
@@ -98,33 +81,50 @@ class CollaborativeFilteringRecommender:
         return self.similarity_matrix
 
     def predict_scores(self, user_idx: int) -> np.ndarray:
-        """Predict score for a given user."""        
         if not self.is_fitted or self.similarity_matrix is None:
             raise RuntimeError("Call fit() before.")
         
-        user_similarities = self.similarity_matrix[user_idx].copy()
-        user_similarities[user_idx] = -1  
+        if self.mode == "user-user":
+            user_similarities = self.similarity_matrix[user_idx].copy()
+            user_similarities[user_idx] = -1  
+            
+            top_k_indices = np.argsort(user_similarities)[-self.k_neighbors:]
+            top_k_sims = user_similarities[top_k_indices]
+            
+            if np.sum(top_k_sims) > 0:
+                weights = top_k_sims / np.sum(top_k_sims)
+                scores = weights @ self.R_bin[top_k_indices]
+            else:
+                scores = np.zeros(self.num_items)
         
-        top_k_indices = np.argsort(user_similarities)[-self.k_neighbors:]
-        top_k_sims = user_similarities[top_k_indices]
-        
-        if np.sum(top_k_sims) > 0:
-            weights = top_k_sims / np.sum(top_k_sims)
-            scores = weights @ self.R_bin[top_k_indices]
-        else:
+        else:  
+            user_items = self.R_bin[user_idx]
+            rated_items = np.where(user_items == 1)[0]
             scores = np.zeros(self.num_items)
+            
+            for item_idx in range(self.num_items):
+                if user_items[item_idx] == 1:
+                    continue
+                
+                item_similarities = self.similarity_matrix[item_idx, rated_items]
+                
+                if len(rated_items) > 0 and np.sum(np.abs(item_similarities)) > 0:
+                    k = min(self.k_neighbors, len(rated_items))
+                    top_k_indices = np.argsort(item_similarities)[-k:]
+                    top_k_sims = item_similarities[top_k_indices]
+                    top_k_ratings = self.R_bin[user_idx, rated_items[top_k_indices]]
+
+                    scores[item_idx] = np.sum(top_k_sims * top_k_ratings) / np.sum(np.abs(top_k_sims))
         
         return scores
 
     def loocv_split(self) -> tuple[np.ndarray, dict[int, int]]:
-        """Performs Leave-One-Out (LOOCV) splitting for Top-N evaluation."""        
         num_users = self.num_users
         test_items: dict[int, int] = {}
         train_matrix = self.R_bin.copy()
 
         for user_idx in range(num_users):
             rated_items = np.where(self.R_bin[user_idx, :] == 1)[0]
-
             if len(rated_items) > 0:
                 test_item = np.random.choice(rated_items, 1)[0]
                 test_items[user_idx] = test_item
@@ -138,12 +138,10 @@ class CollaborativeFilteringRecommender:
         train_matrix: np.ndarray,
         N: int,
     ) -> tuple[float, float]:
-        """Compute HR@N and ARHR under LOOCV using pre-trained latent factors."""
         if not self.is_fitted:
             raise RuntimeError("Call fit() before.")
 
         users_to_evaluate = list(test_items.keys())
-
         if not users_to_evaluate:
             return 0.0, 0.0
 
@@ -152,11 +150,8 @@ class CollaborativeFilteringRecommender:
 
         for user in users_to_evaluate:
             test_item = test_items[user]
-
             all_item_scores = self.predict_scores(user)
-
             unrated_indices = np.where(train_matrix[user, :] == 0)[0]
-
             candidate_scores = all_item_scores[unrated_indices]
             ranked_indices_in_candidates = np.argsort(candidate_scores)[::-1]
 
