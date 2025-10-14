@@ -3,80 +3,52 @@ from typing import Literal
 
 
 class CollaborativeFilteringRecommender:
-    """Collaborative Filtering Recommender User-User and Item-Item."""
+    """Collaborative Filtering Recommender User-User."""
 
     def __init__(
         self,
         R_bin: np.ndarray,
-        mode: Literal["user-user", "item-item"] = "user-user",
         similarity: Literal["jaccard", "cosine"] = "jaccard",
-        k_neighbors: int = 20,
-        k_similarity: int | None = None,
+        k_neighbors: int = 20
     ) -> None:
         self.R_bin = R_bin
-        self.mode = mode
         self.similarity_metric = similarity
         self.k_neighbors = k_neighbors
-        self.k_similarity = k_similarity
-        
         self.num_users, self.num_items = R_bin.shape
         self.similarity_matrix: np.ndarray | None = None
         self.is_fitted: bool = False
 
-    def _jaccard_similarity(self, matrix: np.ndarray) -> np.ndarray:
-        n = matrix.shape[0]
-        similarity = np.zeros((n, n))
+    def jaccard_similarity(self, matrix: np.ndarray) -> np.ndarray:
         
-        for i in range(n):
-            for j in range(i, n):
-                intersection = np.sum(np.logical_and(matrix[i], matrix[j]))
-                union = np.sum(np.logical_or(matrix[i], matrix[j]))
-                
-                if union > 0:
-                    sim = intersection / union
-                else:
-                    sim = 0.0
-                
-                similarity[i, j] = sim
-                similarity[j, i] = sim
+        matrix_bool = matrix.astype(bool)
+    
+        intersection = matrix_bool @ matrix_bool.T
         
-        return similarity
+        cardinalities = matrix_bool.sum(axis=1, keepdims=True)
+        union = cardinalities + cardinalities.T - intersection
+       
+        with np.errstate(divide='ignore', invalid='ignore'):
+            similarity = np.where(union > 0, intersection / union, 0.0)
+        
+        return similarity.astype(float)
 
-    def _cosine_similarity(self, matrix: np.ndarray) -> np.ndarray:
+    def cosine_similarity(self, matrix: np.ndarray) -> np.ndarray:
         norms = np.linalg.norm(matrix, axis=1, keepdims=True)
         norms[norms == 0] = 1
         normalized = matrix / norms
         similarity = normalized @ normalized.T
         return similarity
 
-    def _apply_top_k_similarity(self, similarity: np.ndarray, k: int) -> np.ndarray:
-        sim_k = similarity.copy()
+    def fit(self, train_matrix: np.ndarray | None = None) -> np.ndarray:
+    
+        matrix_to_use = train_matrix if train_matrix is not None else self.R_bin
         
-        for i in range(sim_k.shape[0]):
-            top_k_indices = np.argsort(sim_k[i])[::-1][:k]
-            mask = np.zeros(sim_k.shape[1], dtype=bool)
-            mask[top_k_indices] = True
-            sim_k[i, ~mask] = 0
-
-        return sim_k
-
-    def fit(self) -> np.ndarray:
-        if self.mode == "user-user":
-            matrix = self.R_bin
-        else: 
-            matrix = self.R_bin.T
-        
+    
         if self.similarity_metric == "jaccard":
-            self.similarity_matrix = self._jaccard_similarity(matrix)
+            self.similarity_matrix = self.jaccard_similarity(matrix_to_use)
         else:  
-            self.similarity_matrix = self._cosine_similarity(matrix)
-        
-        if self.k_similarity is not None:
-            self.similarity_matrix = self._apply_top_k_similarity(
-                self.similarity_matrix, 
-                self.k_similarity
-            )
-        
+            self.similarity_matrix = self.cosine_similarity(matrix_to_use)
+                
         self.is_fitted = True
         return self.similarity_matrix
 
@@ -84,37 +56,18 @@ class CollaborativeFilteringRecommender:
         if not self.is_fitted or self.similarity_matrix is None:
             raise RuntimeError("Call fit() before.")
         
-        if self.mode == "user-user":
-            user_similarities = self.similarity_matrix[user_idx].copy()
-            user_similarities[user_idx] = -1  
-            
-            top_k_indices = np.argsort(user_similarities)[-self.k_neighbors:]
-            top_k_sims = user_similarities[top_k_indices]
-            
-            if np.sum(top_k_sims) > 0:
-                weights = top_k_sims / np.sum(top_k_sims)
-                scores = weights @ self.R_bin[top_k_indices]
-            else:
-                scores = np.zeros(self.num_items)
-        
-        else:  
-            user_items = self.R_bin[user_idx]
-            rated_items = np.where(user_items == 1)[0]
-            scores = np.zeros(self.num_items)
-            
-            for item_idx in range(self.num_items):
-                if user_items[item_idx] == 1:
-                    continue
-                
-                item_similarities = self.similarity_matrix[item_idx, rated_items]
-                
-                if len(rated_items) > 0 and np.sum(np.abs(item_similarities)) > 0:
-                    k = min(self.k_neighbors, len(rated_items))
-                    top_k_indices = np.argsort(item_similarities)[-k:]
-                    top_k_sims = item_similarities[top_k_indices]
-                    top_k_ratings = self.R_bin[user_idx, rated_items[top_k_indices]]
 
-                    scores[item_idx] = np.sum(top_k_sims * top_k_ratings) / np.sum(np.abs(top_k_sims))
+        user_similarities = self.similarity_matrix[user_idx].copy()
+        user_similarities[user_idx] = -1  
+        
+        top_k_indices = np.argsort(user_similarities)[-self.k_neighbors:]
+        top_k_sims = user_similarities[top_k_indices]
+        
+        if np.sum(top_k_sims) > 0:
+            weights = top_k_sims / np.sum(top_k_sims)
+            scores = weights @ self.R_bin[top_k_indices]
+        else:
+            scores = np.zeros(self.num_items)
         
         return scores
 
