@@ -97,7 +97,7 @@ class RGLSVDRecommender:
         Run rGLSVD algorithm on the binary utility matrix.
 
         Uses the model configuration defined at initialization (clusters, global and
-        local ranks, convergence threshold).
+        local ranks).
         Iteratively alternates between global and local truncated SVDs,
         and updates the user-specific weights *g_u* according to Eq. (3) from the
         original rGLSVD formulation. The process continues until convergence.
