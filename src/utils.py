@@ -397,7 +397,7 @@ def run_cf(
     *,
     logger: logging.Logger | None = None,
 ) -> tuple[float, float]:
-    """Run user–user Collaborative Filtering under LOOCV and return HR@N and ARHR.
+    """Run user-user Collaborative Filtering under LOOCV and return HR@N and ARHR.
 
     CF similarity is computed on the LOOCV training matrix to avoid leakage.
 
