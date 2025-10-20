@@ -45,7 +45,7 @@ The implementation was inspired by:
 |------|--------------|
 | **.vscode/** | Editor configuration folder (not relevant to the implementation). |
 | **data/** | Contains the CSV files representing the MovieLens dataset used for training and evaluation. |
-| **docs/** | Documentation folder containing:<br>• `mmd_project_report.pdf`: final project report summarizing the methodology, results, and discussion.<br>• `local_latent_space_models_paper.pdf`: reference paper *Local Latent Space Models for Top-N Recommendation* by Christakopoulou and Karypis. |
+| **docs/** | Documentation folder containing:<br>• `local_latent_space_models_paper.pdf`: reference paper *Local Latent Space Models for Top-N Recommendation* by Christakopoulou and Karypis.<br>• `mmd_project.pdf`: final project report summarizing the methodology, results, and discussion. |
 | **src/** | Contains all source code:<br>• `collaborative_class.py`: user-user collaborative filtering implementation.<br>• `rglsvd_class.py`: implementation of rGLSVD (rank-varying).<br>• `sglsvd_class.py`: implementation of sGLSVD (subset-varying).<br>• `utils.py`: helper functions for data loading, preprocessing, and evaluation. |
 | **.gitignore**, **.gitattributes** | Version control configuration files. |
 | **.pre-commit-config.yaml** | Defines pre-commit hooks for Ruff and Mypy. |
