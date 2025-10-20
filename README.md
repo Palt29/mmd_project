@@ -7,8 +7,7 @@
 2. [Key Information](#key-information)  
 3. [Repository Structure](#repository-structure)  
 4. [Setup & Execution](#setup--execution)  
-5. [Code Quality](#code-quality)  
-6. [License](#license)
+5. [Code Quality](#code-quality)
 
 ---
 
