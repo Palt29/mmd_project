@@ -43,19 +43,19 @@ The implementation was inspired by:
 
 | Path | Description |
 |------|--------------|
+| **.vscode/** | Editor configuration folder (not relevant to the implementation). |
 | **data/** | Contains the CSV files representing the MovieLens dataset used for training and evaluation. |
 | **docs/** | Documentation folder containing:<br>• `mmd_project_report.pdf`: final project report summarizing the methodology, results, and discussion.<br>• `local_latent_space_models_paper.pdf`: reference paper *Local Latent Space Models for Top-N Recommendation* by Christakopoulou and Karypis. |
 | **src/** | Contains all source code:<br>• `collaborative_class.py`: user-user collaborative filtering implementation.<br>• `rglsvd_class.py`: implementation of rGLSVD (rank-varying).<br>• `sglsvd_class.py`: implementation of sGLSVD (subset-varying).<br>• `utils.py`: helper functions for data loading, preprocessing, and evaluation. |
-| **3-recommendation.ipynb** | Original course notebook introducing collaborative filtering, later extended to integrate latent-factor models. It displays actual outputs for clarity. |
-| **parameters_research.ipynb** | Notebook used for parameter tuning (number of clusters, global and local latent factors). |
-| **main.py** | Script executing the complete training and evaluation pipeline for rGLSVD and sGLSVD. |
-| **clusters.npy** | Precomputed user cluster assignments. |
-| **utility_matrix.npy** | Precomputed user-item utility matrix. |
-| **.vscode/** | Editor configuration folder (not relevant to the implementation). |
 | **.gitignore**, **.gitattributes** | Version control configuration files. |
-| **.python-version** | Specifies the Python version used. |
 | **.pre-commit-config.yaml** | Defines pre-commit hooks for Ruff and Mypy. |
+| **.python-version** | Specifies the Python version used. |
+| **3-recommendation.ipynb** | Original course notebook introducing collaborative filtering, later extended to integrate latent-factor models. It displays actual outputs for clarity. |
+| **clusters.npy** | Precomputed user cluster assignments. |
+| **main.py** | Script executing the complete training and evaluation pipeline for rGLSVD and sGLSVD. |
+| **parameters_research.ipynb** | Notebook used for parameter tuning (number of clusters, global and local latent factors). |
 | **pyproject.toml**, **uv.lock** | Project dependencies and environment configuration. |
+| **utility_matrix.npy** | Precomputed user-item utility matrix. |
 
 ---
 
