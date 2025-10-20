@@ -93,7 +93,7 @@ uv run python src/main.py
 
 Static analysis and style checking are handled using:
 
-- **Ruff** --- for linting and formatting  
-- **Mypy** --- for static type checking  
+- **Ruff** — for linting and formatting  
+- **Mypy** — for static type checking  
 
 Both tools are automatically executed via pre-commit hooks defined in `.pre-commit-config.yaml`.
