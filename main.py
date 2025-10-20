@@ -18,8 +18,8 @@ def main() -> None:
     num_clusters = 7
 
     # Global and local ranks for SVD
-    f_g = 18
-    f_c_dict = {0: 7, 1: 5, 2: 10, 3: 8, 4: 6, 5: 7, 6: 6}
+    f_g = 10
+    f_c_dict = {0: 7, 1: 10, 2: 15, 3: 12, 4: 22, 5: 15, 6: 20}
 
     # ------------ Initialize rglsvd_model ------------
     rglsvd_model = RGLSVDRecommender(
