@@ -1,8 +1,15 @@
 """Functions for Recommender System."""
 
+from __future__ import annotations
+
 import logging
+from typing import Literal
 
 import numpy as np
+
+from .collaborative_class import CollaborativeFilteringRecommender
+from .rglsvd_class import RGLSVDRecommender
+from .sglsvd_class import SGLSVDRecommender
 
 # Logger setup
 logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
@@ -288,3 +295,133 @@ def binarize_ratings(utility_matrix: np.ndarray) -> np.ndarray:
         entries are 1.0 if rating > 0, and 0.0 otherwise.
     """
     return (utility_matrix > 0).astype(float)
+
+
+def run_rglsvd(
+    R_bin: np.ndarray,
+    clusters: np.ndarray,
+    num_clusters: int,
+    f_g: int,
+    f_c_dict: dict[int, int],
+    topN: int = 10,
+    *,
+    logger: logging.Logger | None = None,
+) -> tuple[float, float]:
+    """Run the rGLSVD pipeline under LOOCV and return HR@N and ARHR.
+
+    Args:
+        R_bin: Binary user-item utility matrix (users x items).
+        clusters: Initial user-to-cluster assignments (shape: [users]).
+        num_clusters: Number of clusters.
+        f_g: Global latent rank.
+        f_c_dict: Per-cluster local ranks (cluster_id -> rank).
+        topN: Cutoff N for Hit-Rate and ARHR.
+        logger: Optional logger. If None, a module logger is used.
+
+    Returns:
+        Tuple (hr, arhr) with HR@N and ARHR.
+    """
+    _logger = logger or logging.getLogger(__name__)
+
+    model = RGLSVDRecommender(
+        R_bin=R_bin,
+        clusters=clusters,
+        num_clusters=num_clusters,
+        f_g=f_g,
+        f_c=f_c_dict,
+    )
+    train_matrix, test_items = model.loocv_split()
+    model.fit(
+        convergence_threshold=0.01,
+        weight_change_threshold=0.01,
+        max_iterations=None,
+    )
+    _logger.info("rGLSVD converged in %d iterations.", model.num_iterations)
+    hr, arhr = model.evaluate_metrics(
+        test_items=test_items, train_matrix=train_matrix, N=topN
+    )
+    return hr, arhr
+
+
+def run_sglsvd(
+    R_bin: np.ndarray,
+    initial_clusters: np.ndarray,
+    num_clusters: int,
+    f_g: int,
+    f_c_shared: int,
+    topN: int = 10,
+    *,
+    logger: logging.Logger | None = None,
+) -> tuple[float, float]:
+    """Run the sGLSVD pipeline under LOOCV and return HR@N and ARHR.
+
+    Args:
+        R_bin: Binary user-item utility matrix (users x items).
+        initial_clusters: Initial user-to-cluster assignments (shape: [users]).
+        num_clusters: Number of clusters.
+        f_g: Global latent rank.
+        f_c_shared: Local latent rank shared across clusters.
+        topN: Cutoff N for Hit-Rate and ARHR.
+        logger: Optional logger. If None, a module logger is used.
+
+    Returns:
+        Tuple (hr, arhr) with HR@N and ARHR.
+    """
+    _logger = logger or logging.getLogger(__name__)
+
+    model = SGLSVDRecommender(
+        R_bin=R_bin,
+        initial_clusters=initial_clusters,
+        num_clusters=num_clusters,
+        f_g=f_g,
+        f_c=f_c_shared,
+    )
+    train_matrix, test_items = model.loocv_split()
+    model.fit(
+        min_error_improvement=0.01,
+        convergence_fraction_threshold=0.005,
+        max_iterations=20,
+    )
+    _logger.info("sGLSVD finished after %d iterations.", model.num_iterations)
+    hr, arhr = model.evaluate_metrics(
+        test_items=test_items, train_matrix=train_matrix, N=topN
+    )
+    return hr, arhr
+
+
+def run_cf(
+    R_bin: np.ndarray,
+    similarity: Literal["jaccard", "cosine"],
+    k_neighbors: int = 20,
+    topN: int = 10,
+    *,
+    logger: logging.Logger | None = None,
+) -> tuple[float, float]:
+    """Run user–user Collaborative Filtering under LOOCV and return HR@N and ARHR.
+
+    CF similarity is computed on the LOOCV training matrix to avoid leakage.
+
+    Args:
+        R_bin: Binary user-item utility matrix (users x items).
+        similarity: Similarity metric to use, either "jaccard" or "cosine".
+        k_neighbors: Number of nearest neighbors per user.
+        topN: Cutoff N for Hit-Rate and ARHR.
+        logger: Optional logger. If None, a module logger is used.
+
+    Returns:
+        Tuple (hr, arhr) with HR@N and ARHR.
+    """
+    _logger = logger or logging.getLogger(__name__)
+
+    model = CollaborativeFilteringRecommender(
+        R_bin=R_bin,
+        similarity=similarity,
+        k_neighbors=k_neighbors,
+    )
+    train_matrix, test_items = model.loocv_split()
+    model.fit(train_matrix=train_matrix)
+    _logger.info("CF-%s evaluated with k=%d.", similarity, k_neighbors)
+    hr, arhr = model.evaluate_metrics(
+        test_items=test_items, train_matrix=train_matrix, N=topN
+    )
+    return hr, arhr
