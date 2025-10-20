@@ -149,6 +149,7 @@ class RGLSVDRecommender:
         ]
         item_local: list[np.ndarray] = [np.empty((0, 0)) for _ in range(num_clusters)]
 
+        # Iteration tracking and convergence setup
         eps = 1e-12  # Guard against division by zero
         iterations_count = 0
         # We assign num_change_users = num_users just to start the while loop
