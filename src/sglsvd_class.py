@@ -88,6 +88,7 @@ class SGLSVDRecommender:
 
     def fit(
         self,
+        bin_utility_matrix: np.ndarray | None = None,
         min_error_improvement: float = 0.01,
         convergence_fraction_threshold: float = 0.005,
         max_iterations: int | None = 20,
@@ -113,6 +114,8 @@ class SGLSVDRecommender:
         exceeds a minimum threshold.
 
         Args:
+            bin_utility_matrix (np.ndarray | None): Binary utility matrix to train on.
+                If None, uses self.R_bin. This allows training on LOOCV splits.
             min_error_improvement (float): Minimum relative improvement in the reconstruction
                 error required to trigger a cluster reassignment. Default: 0.01.
             convergence_fraction_threshold (float): Algorithm stops when the fraction of users
@@ -131,7 +134,11 @@ class SGLSVDRecommender:
                 - list[np.ndarray]: Local item latent matrices (`item_local`, Q^c for each cluster).
                 - list[np.ndarray]: Indices of users belonging to each cluster (`cluster_global_indices`).
         """
-        bin_utility_matrix = self.R_bin
+        # Use provided matrix or default to self.R_bin
+        bin_utility_matrix = (
+            bin_utility_matrix if bin_utility_matrix is not None else self.R_bin
+        )
+
         clusters = self.clusters.copy()
         num_clusters = self.num_clusters
         f_g = self.f_g

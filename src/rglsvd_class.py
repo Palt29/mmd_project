@@ -80,6 +80,7 @@ class RGLSVDRecommender:
 
     def fit(
         self,
+        bin_utility_matrix: np.ndarray | None = None,
         convergence_threshold: float = 0.01,
         weight_change_threshold: float = 0.01,
         max_iterations: int | None = None,
@@ -103,6 +104,8 @@ class RGLSVDRecommender:
         original rGLSVD formulation. The process continues until convergence.
 
         Args:
+            bin_utility_matrix (np.ndarray | None): Binary utility matrix to train on.
+                If None, uses self.R_bin. This allows training on LOOCV splits.
             convergence_threshold (float): Algorithm stops when the fraction of changed users
                 falls below this value. Default: 0.01 (1%).
             weight_change_threshold (float): Minimum absolute change in *g_u* to consider a user
@@ -121,7 +124,11 @@ class RGLSVDRecommender:
                 - list[np.ndarray]: Local item latent matrices (`item_local`, Q^c for each cluster).
                 - list[np.ndarray]: Indices of users belonging to each cluster (`cluster_global_indices`).
         """
-        bin_utility_matrix = self.R_bin
+        # Use provided matrix or default to self.R_bin
+        bin_utility_matrix = (
+            bin_utility_matrix if bin_utility_matrix is not None else self.R_bin
+        )
+
         clusters = self.clusters
         num_clusters = self.num_clusters
         f_g = self.f_g
