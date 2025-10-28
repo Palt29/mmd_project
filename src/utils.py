@@ -331,7 +331,9 @@ def run_rglsvd(
         f_c=f_c_dict,
     )
     train_matrix, test_items = model.loocv_split()
+    # Pass train_matrix to fit() to avoid data leakage
     model.fit(
+        bin_utility_matrix=train_matrix,
         convergence_threshold=0.01,
         weight_change_threshold=0.01,
         max_iterations=None,
@@ -377,7 +379,9 @@ def run_sglsvd(
         f_c=f_c_shared,
     )
     train_matrix, test_items = model.loocv_split()
+    # Pass train_matrix to fit() to avoid data leakage
     model.fit(
+        bin_utility_matrix=train_matrix,
         min_error_improvement=0.01,
         convergence_fraction_threshold=0.005,
         max_iterations=20,
